@@ -1,0 +1,24 @@
+﻿@model WebApplication2.Models.Contact
+@{
+    Layout = null;
+}
+
+@using (Html.BeginForm("AddOrEdit", "Contact", FormMethod.Post, new {onsubmit = "return Submit(this)"}))
+{
+    @Html.HiddenFor(model => model.Id)
+    <div class="form-group">
+        @Html.LabelFor(model => model.Name, new { @class = "control-label" })
+        @Html.EditorFor(model => model.Name, new { htmlAttributes = new { @class = "form-control" } })
+        @Html.ValidationMessageFor(model => model.Name)
+    </div>
+    <div class="form-group">
+        @Html.LabelFor(model => model.Number, new { @class = "control-label" })
+        @Html.EditorFor(model => model.Number, new { htmlAttributes = new { @class = "form-control" } })
+        @Html.ValidationMessageFor(model => model.Number)
+    </div>
+
+    <div class="form-group">
+        <input type="submit" value="Submit" class="btn btn-primary" />
+        <input type="reset" value="Reset" class="btn btn-default"/>
+    </div>
+}

@@ -1,0 +1,214 @@
+﻿
+@{
+    ViewBag.Title = "Contacts";
+}
+
+<h2>Contacts</h2>
+
+<button class="btn btn-primary" style="margin-bottom: 15px;" onclick="PopupForm('@Url.Action("AddOrEdit", "Contact")')">Add new</button>
+<button class="btn btn-default" style="margin-bottom: 15px;" onclick="showMessageBox('@Url.Action("SendMessage", "Contact")')">Send Message</button>
+<table id="contactTable" class="table table-hover">
+    <thead>
+        <tr>
+            <th><input name="select_all" value="1" id="example-select-all" type="checkbox" /></th>
+            <th>Name</th>
+            <th>Number</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+</table>
+
+<link href="//cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css" rel="stylesheet" />
+
+@section scripts
+{
+    <script src="//cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+
+    <script>
+        var Popup, dataTable;
+
+        $(document).ready(function() {
+            dataTable = $('#contactTable').DataTable({
+                "ajax": {
+                    "url": "/contact/GetData",
+                    "type": "GET",
+                    "datatype": "json"
+                },
+
+                "columns": [
+                    {
+                        "data": "Id",
+                        'render': function(data, type, full, meta) {
+                            return '<input type="checkbox" name="id[]" value="' + $('<div/>').text(data).html() + '">';
+                        },
+                        "orderable": false,
+                        "searchable": false,
+                    },
+                    { "data": "Name" },
+                    { "data": "Number" },
+                    {
+                        "data": "Id",
+                        "render": function(data) {
+                            return `<div style="display:flex;"><a class="btn btn-default btn-sm" onclick="PopupForm('@Url.Action("AddOrEdit", "Contact")/${
+                                data}')">Edit</a>
+                                <a class="btn btn-sm btn-danger" onclick="Delete(${data})">Delete</a></div>`;
+                        },
+                        "orderable": false,
+                        "searchable": false,
+                        "width": "150px"
+                    }
+                ]
+            });
+        });
+        // Handle click on "Select all" control
+        $('#example-select-all').on('click',
+            function() {
+                // Check/uncheck all checkboxes in the table
+                var rows = dataTable.rows({ 'search': 'applied' }).nodes();
+                $('input[type="checkbox"]', rows).prop('checked', this.checked);
+            });
+
+        // Handle click on checkbox to set state of "Select all" control
+        $('#example tbody').on('change',
+            'input[type="checkbox"]',
+            function() {
+                // If checkbox is not checked
+                if (!this.checked) {
+                    var el = $('#example-select-all').get(0);
+                    // If "Select all" control is checked and has 'indeterminate' property
+                    if (el && el.checked && ('indeterminate' in el)) {
+                        // Set visual state of "Select all" control 
+                        // as 'indeterminate'
+                        el.indeterminate = true;
+                    }
+                }
+            });
+
+        function showMessageBox(url) {
+            var formDiv = $('<div/>')
+            var checked = false;
+            dataTable.$('input[type="checkbox"]').each(function() {
+                if (this.checked) {
+                    checked = true
+                }
+            });
+            if (checked) {
+                $.get(url).done(function(response) {
+                    formDiv.html(response)
+                    Popup = formDiv.dialog({
+                        autoOpen: true,
+                        resizable: true,
+                        title: "Send message",
+                        close: function() {
+                            Popup.dialog('destroy').remove();
+                        }
+                    })
+                })
+            } else {
+                $.notify('Please select at least one contact',
+                    {
+                        globalPosition: "top center",
+                        className: "error"
+                    })
+            }
+        }
+
+        function PopupForm(url) {
+            var formDiv = $('<div/>')
+            $.get(url).done(function(response) {
+                formDiv.html(response)
+
+                Popup = formDiv.dialog({
+                    autoOpen: true,
+                    resizable: false,
+                    title: "Fill contact details",
+                    height: 500,
+                    width: 700,
+                    close: function() {
+                        Popup.dialog('destroy').remove();
+                    }
+                })
+            })
+        }
+
+        function SubmitSendMessage(form) {
+            $.validator.unobtrusive.parse(form)
+            if ($(form).valid()) {
+                dataTable.$('input[type="checkbox"]').each(function() {
+                    if (this.checked) {
+                        $(`<input type="checkbox" name="Ids[]" style="display:none" checked value="${this.value}" />`).appendTo(form)
+                    }
+                })
+
+                $.ajax({
+                    type: "POST",
+                    url: form.action,
+                    data: $(form).serialize(),
+                    success: function(data) {
+                        Popup.dialog('close');
+                        dataTable.ajax.reload();
+
+                        resp = $.parseJSON(data.message);
+                      
+                        if (resp.status == "failure") {
+                            $.notify(resp.errors[0].message,
+                                {
+                                    globalPosition: "top center",
+                                    className: "error"
+                                })
+                        } else {
+                            console.log(resp);
+                            $.notify('Message sent successfully',
+                                {
+                                    globalPosition: "top center",
+                                    className: "success"
+                                })   
+                        }
+                    }
+                });
+            }
+            return false;
+        }
+
+        function Submit(form) {
+            $.validator.unobtrusive.parse(form)
+            if ($(form).valid()) {
+                $.ajax({
+                    type: "POST",
+                    url: form.action,
+                    data: $(form).serialize(),
+                    success: function(data) {
+                        Popup.dialog('close');
+                        dataTable.ajax.reload();
+                        $.notify(data.message,
+                            {
+                                globalPosition: "top center",
+                                className: "success"
+                            })
+                    }
+                });
+            }
+            return false;
+        }
+
+        function Delete(id) {
+            if (confirm(`Are you sure to Delete this contact?`)) {
+                $.ajax({
+                    type: "POST",
+                    url: `@Url.Action("Delete", "Contact")/${id}`,
+                    success: function(data) {
+                        if (data) {
+                            dataTable.ajax.reload();
+                            $.notify(data.message,
+                                {
+                                    globalPosition: "top center",
+                                    className: "success"
+                                })
+
+                        }
+                    }
+                })
+            }
+        };
+    </script>
+}

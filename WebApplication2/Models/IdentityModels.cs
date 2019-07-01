@@ -24,6 +24,8 @@ namespace WebApplication2.Models
             : base("DefaultConnection", throwIfV1Schema: false)
         {
         }
+    
+        public DbSet<Contact> Contacts { get; set; }
 
         public static ApplicationDbContext Create()
         {
